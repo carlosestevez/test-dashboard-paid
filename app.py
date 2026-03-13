@@ -118,12 +118,25 @@ st.divider()
 st.subheader("💬 Chatea con tus Datos")
 
 if api_key:
-    # Inicializar el cliente del SDK moderno solo si hay API Key
     client = genai.Client(api_key=api_key)
     
+    # --- CORRECCIÓN 1: Inicializar el historial del chat en memoria ---
+    if "messages" not in st.session_state:
+        st.session_state.messages = []
+
+    # Mostrar el historial de mensajes al recargar la app
+    for msg in st.session_state.messages:
+        with st.chat_message(msg["role"]):
+            st.markdown(msg["content"])
+
     user_q = st.chat_input("Pregunta algo sobre el rendimiento de este hotel/marca...")
     
     if user_q:
+        # Guardar y mostrar el mensaje del usuario
+        st.session_state.messages.append({"role": "user", "content": user_q})
+        with st.chat_message("user"):
+            st.markdown(user_q)
+        
         # Contexto: Últimas 10 filas del hotel y fecha seleccionados
         context_df = df_filtered.sort_values(by='Semana', ascending=False).head(10)
         context_csv = context_df.to_csv(index=False)
@@ -138,13 +151,10 @@ if api_key:
         Pregunta: {user_q}
         """
         
-        st.chat_message("user").write(user_q)
-        
         with st.chat_message("assistant"):
-            # UX: Status y Streaming
-            with st.status("Analizando...", expanded=True) as status:
+            # Usar un spinner normal en lugar de status para evitar que oculte la respuesta
+            with st.spinner("Analizando los datos..."):
                 try:
-                    # Modelo gemini-2.5-flash
                     response = client.models.generate_content_stream(
                         model="gemini-2.5-flash",
                         contents=prompt
@@ -154,11 +164,13 @@ if api_key:
                         for chunk in response:
                             yield chunk.text
                             
-                    # Efecto máquina de escribir
-                    st.write_stream(stream_generator())
-                    status.update(label="Análisis completado", state="complete", expanded=False)
+                    # --- CORRECCIÓN 2: Mostrar la respuesta FUERA de un contenedor que se colapsa ---
+                    full_response = st.write_stream(stream_generator())
+                    
+                    # Guardar la respuesta de la IA en el historial
+                    st.session_state.messages.append({"role": "assistant", "content": full_response})
+                    
                 except Exception as e:
-                    status.update(label="Error en el análisis", state="error", expanded=False)
                     st.error(f"Error de conexión con Gemini: {e}")
 else:
     st.info("💡 Por favor, introduce tu API Key de Google en la barra lateral para habilitar el Analista de IA.")

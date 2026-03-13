@@ -10,7 +10,7 @@ st.set_page_config(page_title="Dashboard Marketing Digital", layout="wide")
 def load_data():
     # 1. Datos - Lectura del CSV adjunto
     # Se saltan las dos primeras filas por el formato del reporte de Google Ads
-    df = pd.read_csv("test-informe-paid.csv", sep="\t", skiprows=2, thousands=".", decimal=",")
+    df = pd.read_csv("test-informe-paid.csv", sep="\t", skiprows=2, thousands=".", decimal=",", encoding="utf-16")
     
     # Limpieza: Rellenar NAs numéricos con 0
     numeric_cols = df.select_dtypes(include=['number']).columns
